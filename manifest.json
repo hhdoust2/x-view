@@ -3,14 +3,15 @@
   "name": "نمایش توئیت‌ها | X Reader",
   "icons": [
     {
-      "src": "https://abs.twimg.com/favicons/twitter.3.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "src": "https://cdn-icons-png.flaticon.com/512/5969/5969020.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Logo_of_Twitter.svg/512px-Logo_of_Twitter.svg.png",
-      "type": "image/png",
+      "src": "https://cdn-icons-png.flaticon.com/512/5969/5969020.png",
       "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ],
