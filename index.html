@@ -3,142 +3,283 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نمایش توئیت‌ها (شبیه X)</title>
+    <title>نمایش هوشمند توئیت‌ها</title>
     <style>
+        :root {
+            --bg-color: #0f1419;
+            --card-bg: #161e27;
+            --card-border: #2f3336;
+            --accent-color: #1d9bf0;
+            --accent-hover: #1a8cd8;
+            --text-main: #e7e9ea;
+            --text-sub: #71767b;
+            --danger: #f4212e;
+            --success: #00ba7c;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #15202b;
-            color: #ffffff;
-            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 15px;
             max-width: 650px;
             margin: auto;
             direction: rtl;
         }
-        .card {
-            background: #1e2732;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-            margin-bottom: 20px;
-            border: 1px solid #38444d;
-        }
-        h2 { margin-top: 0; color: #1d9bf0; font-size: 18px; }
-        .form-group {
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        header h1 {
+            font-size: 18px;
+            color: var(--accent-color);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .api-link {
+            font-size: 12px;
+            color: var(--text-sub);
+            text-decoration: none;
+            background: rgba(29, 155, 240, 0.1);
+            padding: 4px 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(29, 155, 240, 0.3);
+            transition: 0.2s;
+        }
+        .api-link:hover { background: rgba(29, 155, 240, 0.2); }
+
+        /* شبکه تنظیمات بالایی (کوچک و فشرده) */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 500px) {
+            .controls-grid { grid-template-columns: 1fr; }
+        }
+
+        .compact-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 12px;
             display: flex;
             flex-direction: column;
+            justify-content: space-between;
         }
-        label { margin-bottom: 5px; font-weight: bold; color: #8899a6; font-size: 13px; }
+
+        .card-header-sm {
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 6px;
+        }
+
         input[type="text"] {
-            padding: 10px;
-            border: 1px solid #38444d;
-            background-color: #253341;
-            color: white;
-            border-radius: 6px;
-            font-size: 14px;
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid var(--card-border);
+            background-color: #000000;
+            color: var(--text-main);
+            border-radius: 8px;
+            font-size: 13px;
             direction: ltr;
+            outline: none;
+            transition: border 0.2s;
         }
-        .btn-container { display: flex; gap: 10px; align-items: center; }
-        button {
-            background-color: #1d9bf0;
+
+        input[type="text"]:focus {
+            border-color: var(--accent-color);
+        }
+
+        .btn-sm {
+            background-color: var(--accent-color);
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 20px;
+            padding: 6px 12px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
+            white-space: nowrap;
             transition: background 0.2s;
         }
-        button:hover { background-color: #1a8cd8; }
-        .status { font-size: 13px; font-weight: bold; }
-        .success { color: #00ba7c; }
 
-        /* استایل کارت‌های توئیت */
+        .btn-sm:hover { background-color: var(--accent-hover); }
+
+        /* تگ‌های کاربران ذخیره‌شده */
+        .users-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+            max-height: 60px;
+            overflow-y: auto;
+        }
+
+        .chip {
+            background: rgba(239, 243, 244, 0.08);
+            border: 1px solid transparent;
+            border-radius: 16px;
+            padding: 2px 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            direction: ltr;
+            transition: 0.2s;
+        }
+
+        .chip:hover {
+            border-color: var(--accent-color);
+            background: rgba(29, 155, 240, 0.1);
+        }
+
+        .chip-name {
+            cursor: pointer;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .chip-del {
+            cursor: pointer;
+            color: var(--text-sub);
+            font-size: 11px;
+            line-height: 1;
+            padding: 2px;
+            border-radius: 50%;
+        }
+
+        .chip-del:hover { color: var(--danger); }
+
+        /* کارت توئیت‌ها */
         .tweet-card {
-            background-color: #1e2732;
-            border: 1px solid #38444d;
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
             border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
-            transition: background 0.2s;
+            padding: 14px;
+            margin-bottom: 10px;
+            transition: 0.2s;
         }
+
         .tweet-card:hover {
-            background-color: #22303c;
+            border-color: rgba(239, 243, 244, 0.2);
         }
+
         .tweet-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
+
         .tweet-user {
             font-weight: bold;
-            color: #fff;
+            color: var(--text-main);
+            font-size: 14px;
             direction: ltr;
         }
+
         .tweet-date {
-            font-size: 12px;
-            color: #8899a6;
+            font-size: 11px;
+            color: var(--text-sub);
             direction: ltr;
         }
+
         .tweet-text {
-            font-size: 15px;
+            font-size: 14px;
             line-height: 1.5;
-            color: #e7e9ea;
+            color: var(--text-main);
             white-space: pre-wrap;
             word-wrap: break-word;
             direction: auto;
             text-align: initial;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
+
         .tweet-stats {
             display: flex;
-            gap: 20px;
-            font-size: 13px;
-            color: #8899a6;
-            border-top: 1px solid #38444d;
-            padding-top: 10px;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--text-sub);
+            border-top: 1px solid var(--card-border);
+            padding-top: 8px;
             direction: ltr;
         }
+
         .stat-item {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
         }
+
         #loading {
             text-align: center;
-            color: #8899a6;
-            padding: 20px;
+            color: var(--text-sub);
+            padding: 30px;
+            font-size: 13px;
         }
     </style>
 </head>
 <body>
 
-    <!-- تنظیمات API -->
-    <div class="card">
-        <h2>تنظیمات API Key</h2>
-        <div class="form-group">
-            <label for="apiKey">کلید API خود را وارد کنید:</label>
-            <input type="text" id="apiKey" placeholder="مثلاً: abc123xyz...">
+    <header>
+        <h1>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            نمایش توئیت‌ها
+        </h1>
+        <a class="api-link" href="https://twitterapi.io/" target="_blank">🔑 دریافت API Key</a>
+    </header>
+
+    <!-- بخش تنظیمات فشرده -->
+    <div class="controls-grid">
+        
+        <!-- ۱. کلید API -->
+        <div class="compact-card">
+            <div class="card-header-sm">
+                <span>کلید API</span>
+                <span id="saveStatus" style="color:var(--success);"></span>
+            </div>
+            <div class="input-group">
+                <input type="text" id="apiKey" placeholder="Paste API Key...">
+                <button class="btn-sm" onclick="saveApiKey()">ذخیره</button>
+            </div>
         </div>
-        <div class="btn-container">
-            <button onclick="saveApiKey()">ذخیره کلید</button>
-            <span id="saveStatus" class="status"></span>
+
+        <!-- ۲. افزودن و لیست کاربران -->
+        <div class="compact-card">
+            <div class="card-header-sm">
+                <span>مدیریت کاربران (حداکثر ۵)</span>
+            </div>
+            <div class="input-group">
+                <input type="text" id="username" placeholder="Username (بدون @)">
+                <button class="btn-sm" onclick="addSavedUser()">+ افزودن</button>
+            </div>
+            <div id="usersList" class="users-chips"></div>
         </div>
+
     </div>
 
-    <!-- جستجو -->
-    <div class="card">
-        <h2>نمایش توئیت‌ها</h2>
-        <div class="form-group">
-            <label for="username">نام کاربری (Username):</label>
-            <input type="text" id="username" value="elonmusk" placeholder="بدون @ وارد کنید">
-        </div>
-        <button onclick="getTweets()">دریافت توئیت‌ها</button>
-    </div>
-
-    <!-- لیست توئیت‌ها -->
+    <!-- کانتینر توئیت‌ها -->
     <div id="tweetsContainer"></div>
 
     <script>
@@ -147,73 +288,113 @@
             if (savedKey) {
                 document.getElementById('apiKey').value = savedKey;
             }
+            renderUsers();
         };
 
         function saveApiKey() {
             const key = document.getElementById('apiKey').value.trim();
-            if (!key) {
-                alert('لطفاً یک کلید معتبر وارد کنید.');
-                return;
-            }
+            if (!key) return alert('لطفاً کلید را وارد کنید.');
+            
             localStorage.setItem('twitter_api_key', key);
             const status = document.getElementById('saveStatus');
-            status.innerText = '✔ ذخیره شد!';
-            status.className = 'status success';
-            setTimeout(() => status.innerText = '', 3000);
+            status.innerText = '✔ ذخیره شد';
+            setTimeout(() => status.innerText = '', 2500);
         }
 
-        async function getTweets() {
-            const apiKey = localStorage.getItem('twitter_api_key') || document.getElementById('apiKey').value.trim();
-            const username = document.getElementById('username').value.trim();
-            const container = document.getElementById('tweetsContainer');
+        function getSavedUsers() {
+            return JSON.parse(localStorage.getItem('saved_twitter_users') || '[]');
+        }
 
-            if (!apiKey || !username) {
-                alert('لطفاً کلید API و نام کاربری را وارد کنید.');
+        function renderUsers() {
+            const users = getSavedUsers();
+            const listContainer = document.getElementById('usersList');
+            listContainer.innerHTML = '';
+
+            if (users.length === 0) {
+                listContainer.innerHTML = '<span style="font-size:11px; color:var(--text-sub); padding-top:4px;">کاربری اضافه نشده است.</span>';
                 return;
             }
 
-            container.innerHTML = '<div id="loading">در حال دریافت توئیت‌ها...</div>';
+            users.forEach((usr, index) => {
+                const chip = document.createElement('div');
+                chip.className = 'chip';
+                chip.innerHTML = `
+                    <span class="chip-name" onclick="getTweets('${usr}')">@${usr}</span>
+                    <span class="chip-del" onclick="deleteUser(${index})" title="حذف">✕</span>
+                `;
+                listContainer.appendChild(chip);
+            });
+        }
+
+        function addSavedUser() {
+            const input = document.getElementById('username');
+            const username = input.value.trim().replace('@', '');
+
+            if (!username) return alert('نام کاربری را وارد کنید.');
+
+            let users = getSavedUsers();
+            if (users.includes(username)) return alert('این کاربر موجود است.');
+            if (users.length >= 5) return alert('سقف ۵ کاربر پر شده است.');
+
+            users.push(username);
+            localStorage.setItem('saved_twitter_users', JSON.stringify(users));
+            input.value = '';
+            renderUsers();
+            getTweets(username);
+        }
+
+        function deleteUser(index) {
+            let users = getSavedUsers();
+            users.splice(index, 1);
+            localStorage.setItem('saved_twitter_users', JSON.stringify(users));
+            renderUsers();
+        }
+
+        async function getTweets(targetUsername) {
+            const apiKey = localStorage.getItem('twitter_api_key') || document.getElementById('apiKey').value.trim();
+            const container = document.getElementById('tweetsContainer');
+
+            if (!apiKey) return alert('لطفاً ابتدا API Key را وارد و ذخیره کنید.');
+
+            container.innerHTML = `<div id="loading">در حال بارگذاری توئیت‌های @${targetUsername}...</div>`;
 
             try {
                 // ۱. دریافت آیدی عددی کاربر
-                const infoUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.twitterapi.io/twitter/user/info?userName=${encodeURIComponent(username)}`)}`;
+                const infoUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.twitterapi.io/twitter/user/info?userName=${encodeURIComponent(targetUsername)}`)}`;
                 const infoRes = await fetch(infoUrl, { headers: { 'x-api-key': apiKey } });
                 const infoData = await infoRes.json();
 
                 const userId = infoData.data?.id_str || infoData.data?.id || infoData.user?.id_str || infoData.id;
 
                 if (!userId) {
-                    container.innerHTML = '<div id="loading">کاربر یافت نشد یا خطا در دریافت اطلاعات.</div>';
+                    container.innerHTML = `<div id="loading">کاربر @${targetUsername} یافت نشد.</div>`;
                     return;
                 }
 
-                // ۲. دریافت تایم‌لاین توئیت‌ها
+                // ۲. دریافت تایم‌لاین
                 const timelineUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.twitterapi.io/twitter/user/tweet_timeline?userId=${userId}`)}`;
                 const timelineRes = await fetch(timelineUrl, { headers: { 'x-api-key': apiKey } });
                 const timelineData = await timelineRes.json();
 
-                // استخراج لیست توئیت‌ها
                 const tweets = timelineData.data?.tweets || timelineData.tweets || timelineData.data || [];
 
                 if (!Array.isArray(tweets) || tweets.length === 0) {
-                    container.innerHTML = '<div id="loading">هیچ توئیتی یافت نشد.</div>';
+                    container.innerHTML = `<div id="loading">پستی برای نمایش وجود ندارد.</div>`;
                     return;
                 }
 
                 container.innerHTML = '';
 
-                // ۳. رندر کردن توئیت‌ها با استفاده از فیلدهای دقیق API شما
+                // ۳. رندر توئیت‌ها
                 tweets.forEach(tweet => {
-                    const tweetText = tweet.text || tweet.full_text || 'بدون متن';
+                    const tweetText = tweet.text || tweet.full_text || '';
                     
-                    // تنظیم فرمت تاریخ
-                    let formattedDate = 'تاریخ نامشخص';
+                    let formattedDate = '';
                     if (tweet.createdAt) {
                         const d = new Date(tweet.createdAt);
                         formattedDate = isNaN(d) ? tweet.createdAt : d.toLocaleString('fa-IR');
                     }
 
-                    // استخراج آمار بر اساس کلیدهای دقیق JSON شما (CamelCase)
                     const likes = tweet.likeCount?.toLocaleString() ?? 0;
                     const retweets = tweet.retweetCount?.toLocaleString() ?? 0;
                     const replies = tweet.replyCount?.toLocaleString() ?? 0;
@@ -223,16 +404,16 @@
                     const tweetHTML = `
                         <div class="tweet-card">
                             <div class="tweet-header">
-                                <span class="tweet-user">@${username}</span>
+                                <span class="tweet-user">@${targetUsername}</span>
                                 <span class="tweet-date">${formattedDate}</span>
                             </div>
                             <div class="tweet-text">${escapeHtml(tweetText)}</div>
                             <div class="tweet-stats">
-                                <div class="stat-item" title="پاسخ‌ها">💬 ${replies}</div>
+                                <div class="stat-item" title="پاسخ">💬 ${replies}</div>
                                 <div class="stat-item" title="بازنشر">🔁 ${retweets}</div>
                                 <div class="stat-item" title="لایک">❤️ ${likes}</div>
                                 <div class="stat-item" title="بازدید">👁️ ${views}</div>
-                                <div class="stat-item" title="بوک‌مارک">پست‌ها🔖 ${bookmarks}</div>
+                                <div class="stat-item" title="بوک‌مارک">🔖 ${bookmarks}</div>
                             </div>
                         </div>
                     `;
