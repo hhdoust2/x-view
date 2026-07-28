@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نمایش توئیت‌ها (شبیه X)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #15202b;
+            color: #ffffff;
+            padding: 20px;
+            max-width: 650px;
+            margin: auto;
+            direction: rtl;
+        }
+        .card {
+            background: #1e2732;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+            border: 1px solid #38444d;
+        }
+        h2 { margin-top: 0; color: #1d9bf0; font-size: 18px; }
+        .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        label { margin-bottom: 5px; font-weight: bold; color: #8899a6; font-size: 13px; }
+        input[type="text"] {
+            padding: 10px;
+            border: 1px solid #38444d;
+            background-color: #253341;
+            color: white;
+            border-radius: 6px;
+            font-size: 14px;
+            direction: ltr;
+        }
+        .btn-container { display: flex; gap: 10px; align-items: center; }
+        button {
+            background-color: #1d9bf0;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #1a8cd8; }
+        .status { font-size: 13px; font-weight: bold; }
+        .success { color: #00ba7c; }
+
+        /* استایل کارت‌های توئیت */
+        .tweet-card {
+            background-color: #1e2732;
+            border: 1px solid #38444d;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: background 0.2s;
+        }
+        .tweet-card:hover {
+            background-color: #22303c;
+        }
+        .tweet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .tweet-user {
+            font-weight: bold;
+            color: #fff;
+            direction: ltr;
+        }
+        .tweet-date {
+            font-size: 12px;
+            color: #8899a6;
+            direction: ltr;
+        }
+        .tweet-text {
+            font-size: 15px;
+            line-height: 1.5;
+            color: #e7e9ea;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            direction: auto;
+            text-align: initial;
+            margin-bottom: 12px;
+        }
+        .tweet-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            color: #8899a6;
+            border-top: 1px solid #38444d;
+            padding-top: 10px;
+            direction: ltr;
+        }
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        #loading {
+            text-align: center;
+            color: #8899a6;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- تنظیمات API -->
+    <div class="card">
+        <h2>تنظیمات API Key</h2>
+        <div class="form-group">
+            <label for="apiKey">کلید API خود را وارد کنید:</label>
+            <input type="text" id="apiKey" placeholder="مثلاً: abc123xyz...">
+        </div>
+        <div class="btn-container">
+            <button onclick="saveApiKey()">ذخیره کلید</button>
+            <span id="saveStatus" class="status"></span>
+        </div>
+    </div>
+
+    <!-- جستجو -->
+    <div class="card">
+        <h2>نمایش توئیت‌ها</h2>
+        <div class="form-group">
+            <label for="username">نام کاربری (Username):</label>
+            <input type="text" id="username" value="elonmusk" placeholder="بدون @ وارد کنید">
+        </div>
+        <button onclick="getTweets()">دریافت توئیت‌ها</button>
+    </div>
+
+    <!-- لیست توئیت‌ها -->
+    <div id="tweetsContainer"></div>
+
+    <script>
+        window.onload = function() {
+            const savedKey = localStorage.getItem('twitter_api_key');
+            if (savedKey) {
+                document.getElementById('apiKey').value = savedKey;
+            }
+        };
+
+        function saveApiKey() {
+            const key = document.getElementById('apiKey').value.trim();
+            if (!key) {
+                alert('لطفاً یک کلید معتبر وارد کنید.');
+                return;
+            }
+            localStorage.setItem('twitter_api_key', key);
+            const status = document.getElementById('saveStatus');
+            status.innerText = '✔ ذخیره شد!';
+            status.className = 'status success';
+            setTimeout(() => status.innerText = '', 3000);
+        }
+
+        async function getTweets() {
+            const apiKey = localStorage.getItem('twitter_api_key') || document.getElementById('apiKey').value.trim();
+            const username = document.getElementById('username').value.trim();
+            const container = document.getElementById('tweetsContainer');
+
+            if (!apiKey || !username) {
+                alert('لطفاً کلید API و نام کاربری را وارد کنید.');
+                return;
+            }
+
+            container.innerHTML = '<div id="loading">در حال دریافت توئیت‌ها...</div>';
+
+            try {
+                // ۱. دریافت آیدی عددی کاربر
+                const infoUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.twitterapi.io/twitter/user/info?userName=${encodeURIComponent(username)}`)}`;
+                const infoRes = await fetch(infoUrl, { headers: { 'x-api-key': apiKey } });
+                const infoData = await infoRes.json();
+
+                const userId = infoData.data?.id_str || infoData.data?.id || infoData.user?.id_str || infoData.id;
+
+                if (!userId) {
+                    container.innerHTML = '<div id="loading">کاربر یافت نشد یا خطا در دریافت اطلاعات.</div>';
+                    return;
+                }
+
+                // ۲. دریافت تایم‌لاین توئیت‌ها
+                const timelineUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.twitterapi.io/twitter/user/tweet_timeline?userId=${userId}`)}`;
+                const timelineRes = await fetch(timelineUrl, { headers: { 'x-api-key': apiKey } });
+                const timelineData = await timelineRes.json();
+
+                // استخراج لیست توئیت‌ها
+                const tweets = timelineData.data?.tweets || timelineData.tweets || timelineData.data || [];
+
+                if (!Array.isArray(tweets) || tweets.length === 0) {
+                    container.innerHTML = '<div id="loading">هیچ توئیتی یافت نشد.</div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+
+                // ۳. رندر کردن توئیت‌ها با استفاده از فیلدهای دقیق API شما
+                tweets.forEach(tweet => {
+                    const tweetText = tweet.text || tweet.full_text || 'بدون متن';
+                    
+                    // تنظیم فرمت تاریخ
+                    let formattedDate = 'تاریخ نامشخص';
+                    if (tweet.createdAt) {
+                        const d = new Date(tweet.createdAt);
+                        formattedDate = isNaN(d) ? tweet.createdAt : d.toLocaleString('fa-IR');
+                    }
+
+                    // استخراج آمار بر اساس کلیدهای دقیق JSON شما (CamelCase)
+                    const likes = tweet.likeCount?.toLocaleString() ?? 0;
+                    const retweets = tweet.retweetCount?.toLocaleString() ?? 0;
+                    const replies = tweet.replyCount?.toLocaleString() ?? 0;
+                    const views = tweet.viewCount?.toLocaleString() ?? 0;
+                    const bookmarks = tweet.bookmarkCount?.toLocaleString() ?? 0;
+
+                    const tweetHTML = `
+                        <div class="tweet-card">
+                            <div class="tweet-header">
+                                <span class="tweet-user">@${username}</span>
+                                <span class="tweet-date">${formattedDate}</span>
+                            </div>
+                            <div class="tweet-text">${escapeHtml(tweetText)}</div>
+                            <div class="tweet-stats">
+                                <div class="stat-item" title="پاسخ‌ها">💬 ${replies}</div>
+                                <div class="stat-item" title="بازنشر">🔁 ${retweets}</div>
+                                <div class="stat-item" title="لایک">❤️ ${likes}</div>
+                                <div class="stat-item" title="بازدید">👁️ ${views}</div>
+                                <div class="stat-item" title="بوک‌مارک">پست‌ها🔖 ${bookmarks}</div>
+                            </div>
+                        </div>
+                    `;
+                    container.innerHTML += tweetHTML;
+                });
+
+            } catch (error) {
+                container.innerHTML = `<div id="loading">خطا در دریافت اطلاعات: ${error.message}</div>`;
+            }
+        }
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
