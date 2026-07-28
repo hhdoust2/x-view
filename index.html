@@ -2,8 +2,19 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نمایش توئیت‌ها</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>نمایش توئیت‌ها | X Reader</title>
+
+    <!-- تنظیمات PWA و آیکون‌ها -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f1419">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="توییتر">
+    <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Logo_of_Twitter.svg/512px-Logo_of_Twitter.svg.png">
+    <link rel="icon" type="image/x-icon" href="https://abs.twimg.com/favicons/twitter.3.ico">
+
     <style>
         :root {
             --bg-color: #0f1419;
@@ -25,6 +36,7 @@
             max-width: 650px;
             margin: auto;
             direction: rtl;
+            user-select: none;
         }
 
         header {
@@ -104,6 +116,7 @@
             direction: ltr;
             outline: none;
             transition: border 0.2s;
+            user-select: text;
         }
 
         input[type="text"]:focus {
@@ -176,6 +189,7 @@
             padding: 14px;
             margin-bottom: 10px;
             transition: 0.2s;
+            user-select: text;
         }
 
         .tweet-card:hover {
@@ -248,6 +262,7 @@
             text-align: left;
             white-space: pre-wrap;
             margin-top: 10px;
+            user-select: text;
         }
     </style>
 </head>
@@ -291,6 +306,14 @@
         const WORKER_URL = "https://xreverse.elabela.workers.dev";
 
         window.onload = function() {
+            // ۱. ثبت سرویس ورکر برای PWA
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(() => console.log('PWA Service Worker Active'))
+                    .catch(err => console.log('SW Registration Fail:', err));
+            }
+
+            // ۲. بازگردانی API Key و لیست کاربران
             const savedKey = localStorage.getItem('twitter_api_key');
             if (savedKey) {
                 document.getElementById('apiKey').value = savedKey;
@@ -308,7 +331,6 @@
             setTimeout(() => status.innerText = '', 2500);
         }
 
-        // ذخیره کاربران به صورت شیء { username, id }
         function getSavedUsers() {
             return JSON.parse(localStorage.getItem('saved_twitter_users_v2') || '[]');
         }
@@ -346,9 +368,8 @@
             }
             if (users.length >= 5) return alert('سقف ۵ کاربر پر شده است.');
 
-            // موقع اضافه کردن، یک بار id دریافت می‌شود
             const userId = await fetchUserId(username);
-            if (!userId) return; // در صورت بروز خطا پیامی نشان داده می‌شود
+            if (!userId) return;
 
             users.push({ username, id: userId });
             localStorage.setItem('saved_twitter_users_v2', JSON.stringify(users));
@@ -364,7 +385,6 @@
             renderUsers();
         }
 
-        // تابع دریافت آیدی که فقط زمان ثبت اولیه کاربر اجرا می‌شود
         async function fetchUserId(username) {
             const apiKey = localStorage.getItem('twitter_api_key') || document.getElementById('apiKey').value.trim();
             const container = document.getElementById('tweetsContainer');
@@ -374,7 +394,7 @@
                 return null;
             }
 
-            container.innerHTML = `<div id="loading">در حال ثبت کاربر و استخراج ID برای @${username}...</div>`;
+            container.innerHTML = `<div id="loading">در حال استخراج شناسه کاربری @${username}...</div>`;
 
             try {
                 const targetInfoUrl = `https://api.twitterapi.io/twitter/user/info?userName=${encodeURIComponent(username)}`;
@@ -421,16 +441,14 @@
 
             let userId = userObj?.id;
 
-            // اگر کاربر قبلا ذخیره نشده باشد، اول آیدی گرفته می‌شود
             if (!userId) {
                 userId = await fetchUserId(targetUsername);
                 if (!userId) return;
             }
 
-            container.innerHTML = `<div id="loading">در حال بارگذاری سریع پست‌های @${targetUsername}...</div>`;
+            container.innerHTML = `<div id="loading">در حال دریافت پست‌های @${targetUsername}...</div>`;
 
             try {
-                // درخواست آنی برای گرفتن پست‌ها با استفاده از ID ذخیره شده
                 const targetTimelineUrl = `https://api.twitterapi.io/twitter/user/tweet_timeline?userId=${userId}`;
                 const timelineUrl = `${WORKER_URL}/?url=${encodeURIComponent(targetTimelineUrl)}`;
                 
