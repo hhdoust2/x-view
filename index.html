@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>نمایش توئیت‌ها | X Reader</title>
 
+    <!-- تنظیمات PWA و آیکون‌های آنلاین معتبر -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f1419">
     <meta name="mobile-web-app-capable" content="yes">
@@ -58,12 +59,11 @@
             gap: 8px;
         }
 
-        /* استایل اختصاصی برای آیکون آنلاین برند X در هدر */
         .app-logo-online {
             width: 22px;
             height: 22px;
             object-fit: contain;
-            filter: brightness(0) invert(1); /* سفید کردن رنگ لوگو */
+            filter: brightness(0) invert(1);
         }
 
         .api-link {
@@ -363,9 +363,11 @@
             });
         }
 
+        // فقط ۱ درخواست جهت گرفتن ID و ذخیره کاربر ارسال می‌شود
         async function addSavedUser() {
             const input = document.getElementById('username');
             const username = input.value.trim().replace('@', '');
+            const container = document.getElementById('tweetsContainer');
 
             if (!username) return alert('نام کاربری را وارد کنید.');
 
@@ -382,7 +384,9 @@
             localStorage.setItem('saved_twitter_users_v2', JSON.stringify(users));
             input.value = '';
             renderUsers();
-            getTweets(username);
+
+            // اعلام موفقیت ثبت بدون فراخوانی مستقیم getTweets برای جلوگیری از خطای ۴۲۹
+            container.innerHTML = `<div id="loading" style="color:var(--success)">کاربر @${username} با موفقیت ثبت شد. برای مشاهده توئیت‌ها روی نام کاربر کلیک کنید.</div>`;
         }
 
         function deleteUser(index) {
@@ -401,7 +405,7 @@
                 return null;
             }
 
-            container.innerHTML = `<div id="loading">در حال استخراج شناسه کاربری @${username}...</div>`;
+            container.innerHTML = `<div id="loading">در حال ثبت و استخراج ID برای @${username}...</div>`;
 
             try {
                 const targetInfoUrl = `https://api.twitterapi.io/twitter/user/info?userName=${encodeURIComponent(username)}`;
