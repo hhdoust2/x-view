@@ -308,8 +308,9 @@
             setTimeout(() => status.innerText = '', 2500);
         }
 
+        // ذخیره کاربران به صورت شیء { username, id }
         function getSavedUsers() {
-            return JSON.parse(localStorage.getItem('saved_twitter_users') || '[]');
+            return JSON.parse(localStorage.getItem('saved_twitter_users_v2') || '[]');
         }
 
         function renderUsers() {
@@ -322,29 +323,35 @@
                 return;
             }
 
-            users.forEach((usr, index) => {
+            users.forEach((usrObj, index) => {
                 const chip = document.createElement('div');
                 chip.className = 'chip';
                 chip.innerHTML = `
-                    <span class="chip-name" onclick="getTweets('${usr}')">@${usr}</span>
+                    <span class="chip-name" onclick="getTweets('${usrObj.username}')">@${usrObj.username}</span>
                     <span class="chip-del" onclick="deleteUser(${index})" title="حذف">✕</span>
                 `;
                 listContainer.appendChild(chip);
             });
         }
 
-        function addSavedUser() {
+        async function addSavedUser() {
             const input = document.getElementById('username');
             const username = input.value.trim().replace('@', '');
 
             if (!username) return alert('نام کاربری را وارد کنید.');
 
             let users = getSavedUsers();
-            if (users.includes(username)) return alert('این کاربر موجود است.');
+            if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+                return alert('این کاربر موجود است.');
+            }
             if (users.length >= 5) return alert('سقف ۵ کاربر پر شده است.');
 
-            users.push(username);
-            localStorage.setItem('saved_twitter_users', JSON.stringify(users));
+            // موقع اضافه کردن، یک بار id دریافت می‌شود
+            const userId = await fetchUserId(username);
+            if (!userId) return; // در صورت بروز خطا پیامی نشان داده می‌شود
+
+            users.push({ username, id: userId });
+            localStorage.setItem('saved_twitter_users_v2', JSON.stringify(users));
             input.value = '';
             renderUsers();
             getTweets(username);
@@ -353,24 +360,24 @@
         function deleteUser(index) {
             let users = getSavedUsers();
             users.splice(index, 1);
-            localStorage.setItem('saved_twitter_users', JSON.stringify(users));
+            localStorage.setItem('saved_twitter_users_v2', JSON.stringify(users));
             renderUsers();
         }
 
-        // تابع کمکی برای ایجاد تاخیر
-        const delay = ms => new Promise(res => setTimeout(res, ms));
-
-        async function getTweets(targetUsername) {
+        // تابع دریافت آیدی که فقط زمان ثبت اولیه کاربر اجرا می‌شود
+        async function fetchUserId(username) {
             const apiKey = localStorage.getItem('twitter_api_key') || document.getElementById('apiKey').value.trim();
             const container = document.getElementById('tweetsContainer');
 
-            if (!apiKey) return alert('لطفاً ابتدا API Key را وارد و ذخیره کنید.');
+            if (!apiKey) {
+                alert('لطفاً ابتدا API Key را وارد و ذخیره کنید.');
+                return null;
+            }
 
-            container.innerHTML = `<div id="loading">گام ۱ از ۲: دریافت شناسه کاربر @${targetUsername}...</div>`;
+            container.innerHTML = `<div id="loading">در حال ثبت کاربر و استخراج ID برای @${username}...</div>`;
 
             try {
-                // ۱. درخواست اول: گرفتن userId
-                const targetInfoUrl = `https://api.twitterapi.io/twitter/user/info?userName=${encodeURIComponent(targetUsername)}`;
+                const targetInfoUrl = `https://api.twitterapi.io/twitter/user/info?userName=${encodeURIComponent(username)}`;
                 const infoUrl = `${WORKER_URL}/?url=${encodeURIComponent(targetInfoUrl)}`;
                 
                 const infoRes = await fetch(infoUrl, { 
@@ -392,15 +399,38 @@
                     throw new Error("شناسه کاربر یافت نشد:\n" + JSON.stringify(infoData, null, 2));
                 }
 
-                // تاخیر ۵.۵ ثانیه‌ای برای رعایت محدودیت اکانت رایگان (QPS Limit)
-                for (let i = 5; i > 0; i--) {
-                    container.innerHTML = `<div id="loading">شناسه دریافت شد! به علت محدودیت API رایگان، دریافت پست‌ها تا ${i} ثانیه دیگر انجام می‌شود...</div>`;
-                    await delay(1000);
-                }
+                return userId;
 
-                container.innerHTML = `<div id="loading">گام ۲ از ۲: دریافت پست‌های @${targetUsername}...</div>`;
+            } catch (error) {
+                container.innerHTML = `
+                    <div id="loading" style="color:var(--danger)">خطا در ثبت کاربر!</div>
+                    <div class="debug-box">${escapeHtml(error.message)}</div>
+                `;
+                return null;
+            }
+        }
 
-                // ۲. درخواست دوم: گرفتن تایم‌لاین
+        async function getTweets(targetUsername) {
+            const apiKey = localStorage.getItem('twitter_api_key') || document.getElementById('apiKey').value.trim();
+            const container = document.getElementById('tweetsContainer');
+
+            if (!apiKey) return alert('لطفاً ابتدا API Key را وارد و ذخیره کنید.');
+
+            let users = getSavedUsers();
+            let userObj = users.find(u => u.username.toLowerCase() === targetUsername.toLowerCase());
+
+            let userId = userObj?.id;
+
+            // اگر کاربر قبلا ذخیره نشده باشد، اول آیدی گرفته می‌شود
+            if (!userId) {
+                userId = await fetchUserId(targetUsername);
+                if (!userId) return;
+            }
+
+            container.innerHTML = `<div id="loading">در حال بارگذاری سریع پست‌های @${targetUsername}...</div>`;
+
+            try {
+                // درخواست آنی برای گرفتن پست‌ها با استفاده از ID ذخیره شده
                 const targetTimelineUrl = `https://api.twitterapi.io/twitter/user/tweet_timeline?userId=${userId}`;
                 const timelineUrl = `${WORKER_URL}/?url=${encodeURIComponent(targetTimelineUrl)}`;
                 
