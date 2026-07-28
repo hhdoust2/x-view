@@ -236,7 +236,6 @@
             font-size: 13px;
         }
 
-        /* استایل نمایش دیباگ برای شناسایی دقیق خطا */
         .debug-box {
             background: #1e1010;
             border: 1px solid var(--danger);
@@ -358,16 +357,19 @@
             renderUsers();
         }
 
+        // تابع کمکی برای ایجاد تاخیر
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+
         async function getTweets(targetUsername) {
             const apiKey = localStorage.getItem('twitter_api_key') || document.getElementById('apiKey').value.trim();
             const container = document.getElementById('tweetsContainer');
 
             if (!apiKey) return alert('لطفاً ابتدا API Key را وارد و ذخیره کنید.');
 
-            container.innerHTML = `<div id="loading">در حال فراخوانی اطلاعات برای @${targetUsername}...</div>`;
+            container.innerHTML = `<div id="loading">گام ۱ از ۲: دریافت شناسه کاربر @${targetUsername}...</div>`;
 
             try {
-                // مرحله اول: گرفتن userId
+                // ۱. درخواست اول: گرفتن userId
                 const targetInfoUrl = `https://api.twitterapi.io/twitter/user/info?userName=${encodeURIComponent(targetUsername)}`;
                 const infoUrl = `${WORKER_URL}/?url=${encodeURIComponent(targetInfoUrl)}`;
                 
@@ -378,11 +380,7 @@
 
                 const infoText = await infoRes.text();
                 let infoData;
-                try {
-                    infoData = JSON.parse(infoText);
-                } catch(e) {
-                    throw new Error("پاسخ سرور JSON معتبر نیست:\n" + infoText);
-                }
+                try { infoData = JSON.parse(infoText); } catch(e) { throw new Error("پاسخ JSON معتبر نیست:\n" + infoText); }
 
                 if (!infoRes.ok) {
                     throw new Error(`خطای HTTP ${infoRes.status}:\n` + JSON.stringify(infoData, null, 2));
@@ -391,10 +389,18 @@
                 const userId = infoData.data?.id_str || infoData.data?.id || infoData.user?.id_str || infoData.id;
 
                 if (!userId) {
-                    throw new Error("آیدی عددی (userId) در پاسخ یافت نشد:\n" + JSON.stringify(infoData, null, 2));
+                    throw new Error("شناسه کاربر یافت نشد:\n" + JSON.stringify(infoData, null, 2));
                 }
 
-                // مرحله دوم: گرفتن پست‌ها
+                // تاخیر ۵.۵ ثانیه‌ای برای رعایت محدودیت اکانت رایگان (QPS Limit)
+                for (let i = 5; i > 0; i--) {
+                    container.innerHTML = `<div id="loading">شناسه دریافت شد! به علت محدودیت API رایگان، دریافت پست‌ها تا ${i} ثانیه دیگر انجام می‌شود...</div>`;
+                    await delay(1000);
+                }
+
+                container.innerHTML = `<div id="loading">گام ۲ از ۲: دریافت پست‌های @${targetUsername}...</div>`;
+
+                // ۲. درخواست دوم: گرفتن تایم‌لاین
                 const targetTimelineUrl = `https://api.twitterapi.io/twitter/user/tweet_timeline?userId=${userId}`;
                 const timelineUrl = `${WORKER_URL}/?url=${encodeURIComponent(targetTimelineUrl)}`;
                 
@@ -405,11 +411,7 @@
 
                 const timelineText = await timelineRes.text();
                 let timelineData;
-                try {
-                    timelineData = JSON.parse(timelineText);
-                } catch(e) {
-                    throw new Error("پاسخ تایم‌لاین JSON معتبر نیست:\n" + timelineText);
-                }
+                try { timelineData = JSON.parse(timelineText); } catch(e) { throw new Error("پاسخ تایم‌لاین معتبر نیست:\n" + timelineText); }
 
                 if (!timelineRes.ok) {
                     throw new Error(`خطای تایم‌لاین HTTP ${timelineRes.status}:\n` + JSON.stringify(timelineData, null, 2));
@@ -460,7 +462,7 @@
 
             } catch (error) {
                 container.innerHTML = `
-                    <div id="loading" style="color:var(--danger)">خطا در دریافت اطلاعات! گزارش جزئیات:</div>
+                    <div id="loading" style="color:var(--danger)">خطا در دریافت اطلاعات!</div>
                     <div class="debug-box">${escapeHtml(error.message)}</div>
                 `;
             }
