@@ -232,8 +232,23 @@
         #loading {
             text-align: center;
             color: var(--text-sub);
-            padding: 30px;
+            padding: 20px;
             font-size: 13px;
+        }
+
+        /* استایل نمایش دیباگ برای شناسایی دقیق خطا */
+        .debug-box {
+            background: #1e1010;
+            border: 1px solid var(--danger);
+            color: #ffb3b3;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            direction: ltr;
+            text-align: left;
+            white-space: pre-wrap;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -248,8 +263,6 @@
     </header>
 
     <div class="controls-grid">
-        
-        <!-- ۱. کلید API -->
         <div class="compact-card">
             <div class="card-header-sm">
                 <span>کلید API</span>
@@ -261,7 +274,6 @@
             </div>
         </div>
 
-        <!-- ۲. مدیریت کاربران -->
         <div class="compact-card">
             <div class="card-header-sm">
                 <span>مدیریت کاربران (حداکثر ۵)</span>
@@ -272,14 +284,11 @@
             </div>
             <div id="usersList" class="users-chips"></div>
         </div>
-
     </div>
 
-    <!-- کانتینر توئیت‌ها -->
     <div id="tweetsContainer"></div>
 
     <script>
-        // آدرس پروکسی اختصاصی کلادفلر شما
         const WORKER_URL = "https://xreverse.elabela.workers.dev";
 
         window.onload = function() {
@@ -355,29 +364,56 @@
 
             if (!apiKey) return alert('لطفاً ابتدا API Key را وارد و ذخیره کنید.');
 
-            container.innerHTML = `<div id="loading">در حال بارگذاری توئیت‌های @${targetUsername}...</div>`;
+            container.innerHTML = `<div id="loading">در حال فراخوانی اطلاعات برای @${targetUsername}...</div>`;
 
             try {
-                // ۱. دریافت آیدی عددی کاربر از طریق پروکسی کلادفلر
+                // مرحله اول: گرفتن userId
                 const targetInfoUrl = `https://api.twitterapi.io/twitter/user/info?userName=${encodeURIComponent(targetUsername)}`;
                 const infoUrl = `${WORKER_URL}/?url=${encodeURIComponent(targetInfoUrl)}`;
                 
-                const infoRes = await fetch(infoUrl, { headers: { 'x-api-key': apiKey } });
-                const infoData = await infoRes.json();
+                const infoRes = await fetch(infoUrl, { 
+                    method: 'GET',
+                    headers: { 'x-api-key': apiKey } 
+                });
+
+                const infoText = await infoRes.text();
+                let infoData;
+                try {
+                    infoData = JSON.parse(infoText);
+                } catch(e) {
+                    throw new Error("پاسخ سرور JSON معتبر نیست:\n" + infoText);
+                }
+
+                if (!infoRes.ok) {
+                    throw new Error(`خطای HTTP ${infoRes.status}:\n` + JSON.stringify(infoData, null, 2));
+                }
 
                 const userId = infoData.data?.id_str || infoData.data?.id || infoData.user?.id_str || infoData.id;
 
                 if (!userId) {
-                    container.innerHTML = `<div id="loading">کاربر @${targetUsername} یافت نشد.</div>`;
-                    return;
+                    throw new Error("آیدی عددی (userId) در پاسخ یافت نشد:\n" + JSON.stringify(infoData, null, 2));
                 }
 
-                // ۲. دریافت تایم‌لاین از طریق پروکسی کلادفلر
+                // مرحله دوم: گرفتن پست‌ها
                 const targetTimelineUrl = `https://api.twitterapi.io/twitter/user/tweet_timeline?userId=${userId}`;
                 const timelineUrl = `${WORKER_URL}/?url=${encodeURIComponent(targetTimelineUrl)}`;
                 
-                const timelineRes = await fetch(timelineUrl, { headers: { 'x-api-key': apiKey } });
-                const timelineData = await timelineRes.json();
+                const timelineRes = await fetch(timelineUrl, { 
+                    method: 'GET',
+                    headers: { 'x-api-key': apiKey } 
+                });
+
+                const timelineText = await timelineRes.text();
+                let timelineData;
+                try {
+                    timelineData = JSON.parse(timelineText);
+                } catch(e) {
+                    throw new Error("پاسخ تایم‌لاین JSON معتبر نیست:\n" + timelineText);
+                }
+
+                if (!timelineRes.ok) {
+                    throw new Error(`خطای تایم‌لاین HTTP ${timelineRes.status}:\n` + JSON.stringify(timelineData, null, 2));
+                }
 
                 const tweets = timelineData.data?.tweets || timelineData.tweets || timelineData.data || [];
 
@@ -388,7 +424,6 @@
 
                 container.innerHTML = '';
 
-                // ۳. رندر کردن توئیت‌ها
                 tweets.forEach(tweet => {
                     const tweetText = tweet.text || tweet.full_text || '';
                     
@@ -424,7 +459,10 @@
                 });
 
             } catch (error) {
-                container.innerHTML = `<div id="loading">خطا در دریافت اطلاعات: ${error.message}</div>`;
+                container.innerHTML = `
+                    <div id="loading" style="color:var(--danger)">خطا در دریافت اطلاعات! گزارش جزئیات:</div>
+                    <div class="debug-box">${escapeHtml(error.message)}</div>
+                `;
             }
         }
 
